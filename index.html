@@ -72,7 +72,9 @@
   #freq{font-size:40px;font-weight:500;letter-spacing:.01em}
   .unit{font-size:16px;color:var(--ink-soft)}
   .level{margin-left:auto;width:66px;height:4px;background:var(--panel-2);align-self:center}
+  .level{position:relative}
   .level i{display:block;height:100%;width:0;background:var(--ink);transition:width .08s linear}
+  .level b{position:absolute;top:-4px;width:1px;height:12px;background:var(--live);left:0}
 
   .well{background:var(--well);height:132px;position:relative;overflow:hidden}
   canvas{display:block;width:100%;height:132px}
@@ -135,7 +137,7 @@
 
 <div class="freqrow">
   <span id="freq">———.——</span><span class="unit">Hz</span>
-  <span class="level"><i id="level"></i></span>
+  <span class="level"><i id="level"></i><b id="gateMark"></b></span>
 </div>
 
 <div class="well"><canvas id="scope"></canvas></div>
@@ -172,12 +174,14 @@
 
   /* noise gate, driven by the sensitivity slider.
      0 = 0.010 (loud room, voice only) … 10 = 0.0004 (unplugged electric across the room) */
-  function gateFor(v){ return 0.010*Math.pow(0.28,v/10*1.85); }
+  function gateFor(v){ return 0.020*Math.pow(0.06,v/10); }
   let gate=gateFor(7);
   const SENS_WORDS=['lowest','','low','','','medium','','high','','','highest'];
   function updateSens(){
     gate=gateFor(+sens.value);
     sensVal.textContent=SENS_WORDS[+sens.value]||(+sens.value>7?'higher':'lower');
+    const gm=document.getElementById('gateMark');
+    if(gm) gm.style.left=Math.max(0,Math.min(100,(20*Math.log10(gate)+72)/72*100))+'%';
   }
   sens.addEventListener('input',updateSens);
   updateSens();
@@ -185,7 +189,7 @@
   const WINDOW=2048;
   let nsdf=new Float32Array(1200);
 
-  function detect(buf,sr,thresh){
+  function detect(buf,sr,thresh,clarityFloor){
     let rms=0,mean=0;
     for(let i=0;i<WINDOW;i++) mean+=buf[i];
     mean/=WINDOW;
@@ -214,7 +218,7 @@
         if(pT>=minLag){maxima.push([pT,pV]);if(pV>best)best=pV;}
       } else tau++;
     }
-    if(!maxima.length||best<0.42) return {rms:rms};
+    if(!maxima.length||best<clarityFloor) return {rms:rms};
 
     const t2=best*0.9;
     let pick=maxima[0];
@@ -253,7 +257,7 @@
     centsEl.textContent=inTune?'in tune':(cents>0?'+':'−')+Math.abs(cents)+' cents';
 
     if(midi===stableMidi){stableCount++;}else{stableMidi=midi;stableCount=1;}
-    if(stableCount===3&&logged[logged.length-1]!==name+octave){
+    if(stableCount===4&&logged[logged.length-1]!==name+octave){
       logged.push(name+octave);
       if(logged.length>28) logged.shift();
       heardEl.innerHTML=logged.map(n=>'<b>'+n+'</b>').join('');
@@ -321,17 +325,20 @@
 
     const work=timeBuf.slice(0,WINDOW);
     // hysteresis: once a note is sounding, follow it down through its decay
-    const r=detect(work,audio.sampleRate,sounding?gate*0.55:gate);
+    const r=detect(work,audio.sampleRate,sounding?gate*0.6:gate,sounding?0.48:0.62);
 
     const db=20*Math.log10(Math.max(r.rms,1e-6));
     levelEl.style.width=Math.max(0,Math.min(100,(db+72)/72*100))+'%';
 
     if(r.freq){
-      sounding=true;
       history.push(r.freq);
-      if(history.length>3) history.shift();
+      if(history.length>4) history.shift();
       const sorted=history.slice().sort((a,b)=>a-b);
-      show(sorted[Math.floor(sorted.length/2)]);
+      const med=sorted[Math.floor(sorted.length/2)];
+      let agree=0;
+      for(const f of history){ if(Math.abs(1200*Math.log2(f/med))<60) agree++; }
+      if(history.length>=3&&agree>=3){ sounding=true; show(med); }
+      else { idle(); }
     } else {
       sounding=false;
       history.length=0;
@@ -366,12 +373,11 @@
 
     // clear the rumble below the lowest string and the hiss above the harmonics
     const hp=audio.createBiquadFilter();
-    hp.type='highpass';hp.frequency.value=58;hp.Q.value=0.7;
+    hp.type='highpass';hp.frequency.value=62;hp.Q.value=0.7;
     const lp=audio.createBiquadFilter();
-    lp.type='lowpass';lp.frequency.value=2600;lp.Q.value=0.7;
-    // lift the whole quiet signal into a usable range
+    lp.type='lowpass';lp.frequency.value=2200;lp.Q.value=0.7;
     const gain=audio.createGain();
-    gain.gain.value=8;
+    gain.gain.value=1;
 
     analyser=audio.createAnalyser();
     analyser.fftSize=4096;
