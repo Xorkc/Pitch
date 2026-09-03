@@ -170,7 +170,7 @@
 
 <button id="power">Start listening</button>
 <p id="err"></p>
-<div class="ver">v4 · 2200 Hz spectrum check</div>
+<div class="ver">v5 · <span id="diag">—</span></div>
 
 <script>
 (function(){
@@ -190,7 +190,7 @@
 
   /* noise gate, driven by the sensitivity slider.
      0 = 0.010 (loud room, voice only) … 10 = 0.0004 (unplugged electric across the room) */
-  function gateFor(v){ return 0.020*Math.pow(0.06,v/10); }
+  function gateFor(v){ return 0.020*Math.pow(0.015,v/10); }
   let gate=gateFor(7);
   const SENS_WORDS=['lowest','','low','','','medium','','high','','','highest'];
   function updateSens(){
@@ -239,7 +239,7 @@
     }
     if(!maxima.length||best<clarityFloor) return {rms:rms};
 
-    const t2=best*0.9;
+    const t2=best*0.96;
     let pick=maxima[0];
     for(const m of maxima){if(m[1]>=t2){pick=m;break;}}
 
@@ -250,7 +250,7 @@
     const period=t+Math.max(-1,Math.min(1,shift));
     const f=sr/period;
     if(!isFinite(f)||f<MODES[mode].lo-4||f>MODES[mode].hi+40) return {rms:rms};
-    return {rms:rms,freq:correctOctave(f,sr),clarity:y2};
+    return {rms:rms,raw:f,freq:correctOctave(f,sr),clarity:y2};
   }
 
   /* an unplugged electric puts more energy in the harmonics than the fundamental,
@@ -266,15 +266,11 @@
     return m;
   }
   function correctOctave(f,sr){
-    const lo=MODES[mode].lo;
-    for(let pass=0;pass<2;pass++){
-      let moved=false;
-      for(const d of [3,2]){
-        const c=f/d;
-        if(c>=lo&&magAt(c,sr)>magAt(f,sr)-12){f=c;moved=true;break;}
-      }
-      if(!moved) break;
-    }
+    if(!freqBuf) return f;
+    let gmax=-Infinity;
+    for(let i=0;i<freqBuf.length;i++) if(freqBuf[i]>gmax) gmax=freqBuf[i];
+    const h=f/2;
+    if(h>=MODES[mode].lo && magAt(h,sr)>magAt(f,sr)-6 && magAt(h,sr)>gmax-25) return h;
     return f;
   }
 
@@ -370,8 +366,12 @@
 
     const work=timeBuf.slice(0,WINDOW);
     // hysteresis: once a note is sounding, follow it down through its decay
-    const r=detect(work,audio.sampleRate,sounding?gate*0.6:gate,sounding?0.48:0.62);
+    const r=detect(work,audio.sampleRate,sounding?gate*0.6:gate,sounding?0.40:0.55);
 
+    const dg=document.getElementById('diag');
+    if(dg) dg.textContent = r.freq
+      ? 'raw '+r.raw.toFixed(1)+' → '+r.freq.toFixed(1)+' Hz · clarity '+r.clarity.toFixed(2)+' · lvl '+r.rms.toFixed(4)
+      : 'no pitch · lvl '+r.rms.toFixed(4)+' · gate '+gate.toFixed(4);
     const db=20*Math.log10(Math.max(r.rms,1e-6));
     levelEl.style.width=Math.max(0,Math.min(100,(db+72)/72*100))+'%';
 
