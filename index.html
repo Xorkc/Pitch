@@ -79,6 +79,14 @@
   .well{background:var(--well);height:132px;position:relative;overflow:hidden}
   canvas{display:block;width:100%;height:132px}
 
+  .modes{display:flex;gap:0;padding:12px 0 2px}
+  .modes button{
+    font:inherit;font-size:14px;padding:8px 16px;
+    border:1px solid var(--ink);background:transparent;color:var(--ink);
+    border-radius:0;margin-left:-1px;
+  }
+  .modes button:first-child{margin-left:0}
+  .modes button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
   .sens{display:flex;align-items:center;gap:12px;padding:12px 0 10px}
   .sens label{font-size:13px;color:var(--ink-soft);flex:none}
   .sens input{
@@ -107,6 +115,7 @@
   #power:active{background:var(--live)}
   #power.on{background:transparent;color:var(--ink);border:1px solid var(--ink);font-weight:500}
 
+  .ver{font-size:11px;color:var(--ink-soft);opacity:.7;padding-top:14px}
   #err{font-size:14px;line-height:1.45;color:var(--live);margin:12px 0 0;max-width:44em}
   #err:empty{display:none}
 
@@ -142,6 +151,11 @@
 
 <div class="well"><canvas id="scope"></canvas></div>
 
+<div class="modes">
+  <button id="mGuitar" aria-pressed="true">Guitar</button>
+  <button id="mWide" aria-pressed="false">Wide</button>
+</div>
+
 <div class="sens">
   <label for="sens">Sensitivity</label>
   <input type="range" id="sens" min="0" max="10" step="1" value="7">
@@ -156,6 +170,7 @@
 
 <button id="power">Start listening</button>
 <p id="err"></p>
+<div class="ver">v4 · 2200 Hz spectrum check</div>
 
 <script>
 (function(){
@@ -167,6 +182,7 @@
         refVal=el('refVal'),canvas=el('scope'),sens=el('sens'),sensVal=el('sensVal');
   const ctx2d=canvas.getContext('2d');
 
+  let lpNode=null;
   let A4=440, running=false, audio=null, analyser=null, stream=null,
       timeBuf=null, lastDetect=0, rafId=0,
       history=[], stableMidi=null, stableCount=0, logged=[], smoothCents=0,
@@ -186,8 +202,11 @@
   sens.addEventListener('input',updateSens);
   updateSens();
 
-  const WINDOW=2048;
-  let nsdf=new Float32Array(1200);
+  const WINDOW=4096;
+  let nsdf=new Float32Array(2400);
+  let freqBuf=null;
+  const MODES={guitar:{lo:70,hi:700,lp:1100},wide:{lo:62,hi:2200,lp:2600}};
+  let mode='guitar';
 
   function detect(buf,sr,thresh,clarityFloor){
     let rms=0,mean=0;
@@ -197,7 +216,7 @@
     rms=Math.sqrt(rms/WINDOW);
     if(rms<thresh) return {rms:rms};
 
-    const maxLag=Math.min(Math.floor(sr/60),WINDOW>>1);
+    const maxLag=Math.min(Math.floor(sr/MODES[mode].lo),WINDOW>>1);
     if(nsdf.length<maxLag+2) nsdf=new Float32Array(maxLag+2);
 
     for(let tau=1;tau<=maxLag;tau++){
@@ -209,7 +228,7 @@
 
     let tau=1;
     while(tau<=maxLag&&nsdf[tau]>0) tau++;
-    const minLag=Math.max(2,Math.floor(sr/2200));
+    const minLag=Math.max(2,Math.floor(sr/MODES[mode].hi));
     const maxima=[];let best=-1;
     while(tau<=maxLag){
       if(nsdf[tau]>0){
@@ -230,8 +249,33 @@
     const shift=den!==0?(y3-y1)/den:0;
     const period=t+Math.max(-1,Math.min(1,shift));
     const f=sr/period;
-    if(!isFinite(f)||f<58||f>2200) return {rms:rms};
-    return {rms:rms,freq:f,clarity:y2};
+    if(!isFinite(f)||f<MODES[mode].lo-4||f>MODES[mode].hi+40) return {rms:rms};
+    return {rms:rms,freq:correctOctave(f,sr),clarity:y2};
+  }
+
+  /* an unplugged electric puts more energy in the harmonics than the fundamental,
+     so the raw pitch is often 2x or 3x too high. Check the spectrum underneath it. */
+  function magAt(f,sr){
+    if(!freqBuf) return -Infinity;
+    const binHz=sr/(freqBuf.length*2);
+    const b=f/binHz;
+    let m=-Infinity;
+    for(let i=Math.max(0,Math.round(b)-2);i<=Math.round(b)+2&&i<freqBuf.length;i++){
+      if(freqBuf[i]>m) m=freqBuf[i];
+    }
+    return m;
+  }
+  function correctOctave(f,sr){
+    const lo=MODES[mode].lo;
+    for(let pass=0;pass<2;pass++){
+      let moved=false;
+      for(const d of [3,2]){
+        const c=f/d;
+        if(c>=lo&&magAt(c,sr)>magAt(f,sr)-12){f=c;moved=true;break;}
+      }
+      if(!moved) break;
+    }
+    return f;
   }
 
   function show(f){
@@ -295,7 +339,7 @@
     let peak=0;
     for(let i=0;i<buf.length;i++){const a=Math.abs(buf[i]);if(a>peak)peak=a;}
     peakEnv=peak>peakEnv?peak:peakEnv*0.94+peak*0.06;
-    const scale=1/Math.max(peakEnv,0.0025);
+    const scale=1/Math.max(peakEnv,gate*3.5);
 
     let start=0;
     for(let i=1;i<buf.length/2;i++){
@@ -318,9 +362,10 @@
     if(!analyser) return;
     analyser.getFloatTimeDomainData(timeBuf);
     drawScope(timeBuf);
+    analyser.getFloatFrequencyData(freqBuf);
 
     const now=performance.now();
-    if(now-lastDetect<55) return;
+    if(now-lastDetect<70) return;
     lastDetect=now;
 
     const work=timeBuf.slice(0,WINDOW);
@@ -383,6 +428,8 @@
     analyser.fftSize=4096;
     analyser.smoothingTimeConstant=0;
     timeBuf=new Float32Array(analyser.fftSize);
+    freqBuf=new Float32Array(analyser.frequencyBinCount);
+    lpNode=lp;
 
     src.connect(hp);hp.connect(lp);lp.connect(gain);gain.connect(analyser);
 
@@ -410,6 +457,16 @@
     levelEl.style.width='0';
     ctx2d.clearRect(0,0,canvas.clientWidth,canvas.clientHeight);
   }
+
+  function setMode(m){
+    mode=m;
+    document.getElementById('mGuitar').setAttribute('aria-pressed',m==='guitar');
+    document.getElementById('mWide').setAttribute('aria-pressed',m==='wide');
+    if(lpNode) lpNode.frequency.value=MODES[m].lp;
+    history.length=0;sounding=false;
+  }
+  document.getElementById('mGuitar').addEventListener('click',()=>setMode('guitar'));
+  document.getElementById('mWide').addEventListener('click',()=>setMode('wide'));
 
   power.addEventListener('click',()=>running?stop():start());
   el('refUp').addEventListener('click',()=>{A4=Math.min(466,A4+1);refVal.textContent='A '+A4;});
