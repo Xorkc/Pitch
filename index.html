@@ -30,7 +30,6 @@
     touch-action:manipulation;
   }
 
-  /* status strip */
   .strip{
     display:flex;align-items:center;gap:9px;
     padding:14px 0 10px;
@@ -49,76 +48,64 @@
   .ref button:active{background:var(--ink);color:var(--panel)}
   #refVal{min-width:62px;text-align:center;font-size:14px}
 
-  /* readout */
   .readout{padding:22px 0 6px}
-  .glyph{
-    display:flex;align-items:baseline;gap:6px;
-    line-height:.82;
-  }
-  #note{
-    font-size:118px;font-weight:600;letter-spacing:-.02em;
-    display:block;
-  }
+  .glyph{display:flex;align-items:baseline;gap:6px;line-height:.82}
+  #note{font-size:118px;font-weight:600;letter-spacing:-.02em;display:block}
   #note.idle{color:var(--ink-soft);font-weight:400}
   #oct{font-size:34px;font-weight:400;color:var(--ink-soft);align-self:flex-end;position:relative;top:-6px}
 
-  /* cents meter */
   .meter{position:relative;height:46px;margin:18px 0 8px;border-top:1px solid var(--ink)}
   .ticks{position:absolute;inset:0;
-    background:
-      repeating-linear-gradient(90deg,var(--ink-soft) 0 1px,transparent 1px 10%);
-    height:9px;opacity:.55;
-  }
+    background:repeating-linear-gradient(90deg,var(--ink-soft) 0 1px,transparent 1px 10%);
+    height:9px;opacity:.55}
   .zero{position:absolute;left:50%;top:0;width:1px;height:20px;background:var(--ink);transform:translateX(-.5px)}
-  .needle{
-    position:absolute;top:0;left:50%;width:3px;height:34px;
+  .needle{position:absolute;top:0;left:50%;width:3px;height:34px;
     background:var(--live);transform:translateX(-1.5px);
-    transition:left .07s linear,background .15s;
-    will-change:left;
-  }
+    transition:left .07s linear,background .15s;will-change:left}
   .needle.lock{background:var(--lock)}
   .needle.off{opacity:0}
   #cents{position:absolute;bottom:0;left:0;font-size:15px;color:var(--ink-soft)}
   #cents.lock{color:var(--lock)}
 
-  /* frequency */
-  .freqrow{
-    display:flex;align-items:baseline;gap:7px;
-    padding:12px 0 14px;border-top:1px solid var(--ink);
-  }
+  .freqrow{display:flex;align-items:baseline;gap:7px;
+    padding:12px 0 14px;border-top:1px solid var(--ink)}
   #freq{font-size:40px;font-weight:500;letter-spacing:.01em}
   .unit{font-size:16px;color:var(--ink-soft)}
   .level{margin-left:auto;width:66px;height:4px;background:var(--panel-2);align-self:center}
   .level i{display:block;height:100%;width:0;background:var(--ink);transition:width .08s linear}
 
-  /* scope */
   .well{background:var(--well);height:132px;position:relative;overflow:hidden}
   canvas{display:block;width:100%;height:132px}
 
-  /* heard */
-  .heard{
-    display:flex;gap:10px;align-items:flex-start;
-    padding:13px 0 4px;min-height:52px;
-    border-bottom:1px solid var(--ink);
+  .sens{display:flex;align-items:center;gap:12px;padding:12px 0 10px}
+  .sens label{font-size:13px;color:var(--ink-soft);flex:none}
+  .sens input{
+    -webkit-appearance:none;appearance:none;flex:1;height:22px;background:transparent;margin:0;
   }
+  .sens input::-webkit-slider-runnable-track{height:1px;background:var(--ink)}
+  .sens input::-webkit-slider-thumb{
+    -webkit-appearance:none;width:20px;height:20px;border-radius:2px;
+    background:var(--ink);margin-top:-10px;
+  }
+  #sensVal{font-size:13px;color:var(--ink-soft);width:52px;text-align:right;flex:none}
+
+  .heard{display:flex;gap:10px;align-items:flex-start;
+    padding:13px 0 4px;min-height:52px;
+    border-top:1px solid var(--ink);border-bottom:1px solid var(--ink)}
   .heard span.tag{font-size:13px;color:var(--ink-soft);flex:none;width:38px;padding-top:2px}
   #heard{display:flex;flex-wrap:wrap;gap:5px 9px;font-size:17px}
   #heard b{font-weight:500}
   #heard b:last-child{color:var(--live)}
   .heard em{font-style:normal;font-size:14px;color:var(--ink-soft);padding-top:3px}
 
-  /* power */
-  #power{
-    display:block;width:100%;margin-top:20px;
+  #power{display:block;width:100%;margin-top:20px;
     font:inherit;font-size:19px;font-weight:600;letter-spacing:.03em;
     padding:16px;border:none;border-radius:2px;
-    background:var(--ink);color:var(--panel);
-  }
+    background:var(--ink);color:var(--panel)}
   #power:active{background:var(--live)}
   #power.on{background:transparent;color:var(--ink);border:1px solid var(--ink);font-weight:500}
 
   #err{font-size:14px;line-height:1.45;color:var(--live);margin:12px 0 0;max-width:44em}
-  #err a{color:var(--live)}
   #err:empty{display:none}
 
   @media (prefers-reduced-motion:reduce){.needle{transition:none}}
@@ -142,7 +129,7 @@
     <div class="ticks"></div>
     <div class="zero"></div>
     <div class="needle off" id="needle"></div>
-    <div id="cents">play something</div>
+    <div id="cents">play one note</div>
   </div>
 </div>
 
@@ -152,6 +139,12 @@
 </div>
 
 <div class="well"><canvas id="scope"></canvas></div>
+
+<div class="sens">
+  <label for="sens">Sensitivity</label>
+  <input type="range" id="sens" min="0" max="10" step="1" value="7">
+  <span id="sensVal">high</span>
+</div>
 
 <div class="heard">
   <span class="tag">heard</span>
@@ -169,24 +162,36 @@
   const noteEl=el('note'),octEl=el('oct'),centsEl=el('cents'),needle=el('needle'),
         freqEl=el('freq'),levelEl=el('level'),statusEl=el('status'),lamp=el('lamp'),
         power=el('power'),errEl=el('err'),heardEl=el('heard'),heardEmpty=el('heardEmpty'),
-        refVal=el('refVal'),canvas=el('scope');
+        refVal=el('refVal'),canvas=el('scope'),sens=el('sens'),sensVal=el('sensVal');
   const ctx2d=canvas.getContext('2d');
 
   let A4=440, running=false, audio=null, analyser=null, stream=null,
       timeBuf=null, lastDetect=0, rafId=0,
-      history=[], stableMidi=null, stableCount=0, logged=[], smoothCents=0, holdUntil=0;
+      history=[], stableMidi=null, stableCount=0, logged=[], smoothCents=0,
+      holdUntil=0, sounding=false, peakEnv=0.02;
 
-  /* ---------- pitch detection: McLeod normalised square difference ---------- */
+  /* noise gate, driven by the sensitivity slider.
+     0 = 0.010 (loud room, voice only) … 10 = 0.0004 (unplugged electric across the room) */
+  function gateFor(v){ return 0.010*Math.pow(0.28,v/10*1.85); }
+  let gate=gateFor(7);
+  const SENS_WORDS=['lowest','','low','','','medium','','high','','','highest'];
+  function updateSens(){
+    gate=gateFor(+sens.value);
+    sensVal.textContent=SENS_WORDS[+sens.value]||(+sens.value>7?'higher':'lower');
+  }
+  sens.addEventListener('input',updateSens);
+  updateSens();
+
   const WINDOW=2048;
   let nsdf=new Float32Array(1200);
 
-  function detect(buf,sr){
+  function detect(buf,sr,thresh){
     let rms=0,mean=0;
-    for(let i=0;i<WINDOW;i++){mean+=buf[i];}
+    for(let i=0;i<WINDOW;i++) mean+=buf[i];
     mean/=WINDOW;
     for(let i=0;i<WINDOW;i++){const v=buf[i]-mean;buf[i]=v;rms+=v*v;}
     rms=Math.sqrt(rms/WINDOW);
-    if(rms<0.006) return {rms:rms};
+    if(rms<thresh) return {rms:rms};
 
     const maxLag=Math.min(Math.floor(sr/60),WINDOW>>1);
     if(nsdf.length<maxLag+2) nsdf=new Float32Array(maxLag+2);
@@ -198,7 +203,6 @@
       nsdf[tau]=m>0?2*ac/m:0;
     }
 
-    // skip the initial lobe, then gather maxima
     let tau=1;
     while(tau<=maxLag&&nsdf[tau]>0) tau++;
     const minLag=Math.max(2,Math.floor(sr/2200));
@@ -210,11 +214,11 @@
         if(pT>=minLag){maxima.push([pT,pV]);if(pV>best)best=pV;}
       } else tau++;
     }
-    if(!maxima.length||best<0.5) return {rms:rms};
+    if(!maxima.length||best<0.42) return {rms:rms};
 
-    const thresh=best*0.9;
+    const t2=best*0.9;
     let pick=maxima[0];
-    for(const m of maxima){if(m[1]>=thresh){pick=m;break;}}
+    for(const m of maxima){if(m[1]>=t2){pick=m;break;}}
 
     const t=pick[0];
     const y1=nsdf[t-1]||0,y2=nsdf[t],y3=nsdf[t+1]||0;
@@ -226,7 +230,6 @@
     return {rms:rms,freq:f,clarity:y2};
   }
 
-  /* ---------- display ---------- */
   function show(f){
     const midiF=12*Math.log2(f/A4)+69;
     const midi=Math.round(midiF);
@@ -249,7 +252,6 @@
     centsEl.classList.toggle('lock',inTune);
     centsEl.textContent=inTune?'in tune':(cents>0?'+':'−')+Math.abs(cents)+' cents';
 
-    // running log of distinct stable notes
     if(midi===stableMidi){stableCount++;}else{stableMidi=midi;stableCount=1;}
     if(stableCount===3&&logged[logged.length-1]!==name+octave){
       logged.push(name+octave);
@@ -257,7 +259,7 @@
       heardEl.innerHTML=logged.map(n=>'<b>'+n+'</b>').join('');
       heardEmpty.style.display='none';
     }
-    holdUntil=performance.now()+700;
+    holdUntil=performance.now()+1100;
   }
 
   function idle(){
@@ -265,13 +267,12 @@
     noteEl.textContent='—';noteEl.classList.add('idle');
     octEl.textContent='';
     freqEl.textContent='———.——';
-    centsEl.textContent='play something';
+    centsEl.textContent='play one note';
     centsEl.classList.remove('lock');
     needle.classList.add('off');
     stableMidi=null;stableCount=0;
   }
 
-  /* ---------- scope ---------- */
   function sizeCanvas(){
     const r=Math.min(window.devicePixelRatio||1,2);
     canvas.width=canvas.clientWidth*r;
@@ -286,19 +287,23 @@
     ctx2d.strokeStyle='rgba(232,228,216,.18)';ctx2d.lineWidth=1;
     ctx2d.beginPath();ctx2d.moveTo(0,mid);ctx2d.lineTo(w,mid);ctx2d.stroke();
 
-    // trigger on a rising zero crossing so the trace holds still
+    // track a decaying peak so a quiet signal still fills the window
+    let peak=0;
+    for(let i=0;i<buf.length;i++){const a=Math.abs(buf[i]);if(a>peak)peak=a;}
+    peakEnv=peak>peakEnv?peak:peakEnv*0.94+peak*0.06;
+    const scale=1/Math.max(peakEnv,0.0025);
+
     let start=0;
     for(let i=1;i<buf.length/2;i++){
       if(buf[i-1]<=0&&buf[i]>0){start=i;break;}
     }
     const span=Math.floor(buf.length/2);
-    ctx2d.strokeStyle='#E8E4D8';ctx2d.lineWidth=1.6;
-    ctx2d.lineJoin='round';
+    ctx2d.strokeStyle='#E8E4D8';ctx2d.lineWidth=1.6;ctx2d.lineJoin='round';
     ctx2d.beginPath();
     for(let i=0;i<span;i++){
-      const v=buf[start+i]||0;
+      const v=(buf[start+i]||0)*scale;
       const x=i/span*w;
-      const y=mid-v*mid*2.4;
+      const y=mid-Math.max(-1,Math.min(1,v))*mid*0.86;
       i?ctx2d.lineTo(x,y):ctx2d.moveTo(x,y);
     }
     ctx2d.stroke();
@@ -315,34 +320,38 @@
     lastDetect=now;
 
     const work=timeBuf.slice(0,WINDOW);
-    const r=detect(work,audio.sampleRate);
-    levelEl.style.width=Math.min(100,r.rms*900)+'%';
+    // hysteresis: once a note is sounding, follow it down through its decay
+    const r=detect(work,audio.sampleRate,sounding?gate*0.55:gate);
+
+    const db=20*Math.log10(Math.max(r.rms,1e-6));
+    levelEl.style.width=Math.max(0,Math.min(100,(db+72)/72*100))+'%';
 
     if(r.freq){
+      sounding=true;
       history.push(r.freq);
       if(history.length>3) history.shift();
       const sorted=history.slice().sort((a,b)=>a-b);
       show(sorted[Math.floor(sorted.length/2)]);
     } else {
+      sounding=false;
       history.length=0;
       idle();
     }
   }
 
-  /* ---------- start / stop ---------- */
   async function start(){
     errEl.textContent='';
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-      errEl.innerHTML='This browser will not hand over the microphone here. That normally means the page is not on a secure address — open it over https:// (or localhost) and try again.';
+      errEl.textContent='This browser will not hand over the microphone here. That normally means the page is not on a secure address — open it over https:// and try again.';
       return;
     }
     try{
       stream=await navigator.mediaDevices.getUserMedia({audio:{
-        echoCancellation:false,noiseSuppression:false,autoGainControl:false
+        echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1
       }});
     }catch(e){
       if(e.name==='NotAllowedError'){
-        errEl.textContent='Microphone access was blocked. In Safari, tap the “aA” in the address bar → Website Settings → Microphone → Allow, then reload.';
+        errEl.textContent='Microphone access was blocked. In Safari, tap “aA” in the address bar → Website Settings → Microphone → Allow, then reload.';
       }else if(e.name==='NotFoundError'){
         errEl.textContent='No microphone found on this device.';
       }else{
@@ -354,13 +363,24 @@
     audio=new (window.AudioContext||window.webkitAudioContext)();
     await audio.resume();
     const src=audio.createMediaStreamSource(stream);
+
+    // clear the rumble below the lowest string and the hiss above the harmonics
+    const hp=audio.createBiquadFilter();
+    hp.type='highpass';hp.frequency.value=58;hp.Q.value=0.7;
+    const lp=audio.createBiquadFilter();
+    lp.type='lowpass';lp.frequency.value=2600;lp.Q.value=0.7;
+    // lift the whole quiet signal into a usable range
+    const gain=audio.createGain();
+    gain.gain.value=8;
+
     analyser=audio.createAnalyser();
     analyser.fftSize=4096;
     analyser.smoothingTimeConstant=0;
     timeBuf=new Float32Array(analyser.fftSize);
-    src.connect(analyser);
 
-    running=true;
+    src.connect(hp);hp.connect(lp);lp.connect(gain);gain.connect(analyser);
+
+    running=true;peakEnv=0.02;
     lamp.classList.add('on');
     statusEl.textContent='Listening · '+Math.round(audio.sampleRate/1000)+' kHz';
     power.textContent='Stop listening';
@@ -371,7 +391,7 @@
   }
 
   function stop(){
-    running=false;
+    running=false;sounding=false;
     cancelAnimationFrame(rafId);
     if(stream) stream.getTracks().forEach(t=>t.stop());
     if(audio) audio.close();
